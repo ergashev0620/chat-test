@@ -1,37 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
-  <title>O'yin Chati</title>
+  <meta charset="UTF-8">
+  <title>Chat</title>
   <style>
-    #chat { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+    body { font-family: sans-serif; padding: 20px; }
+    #login, #chat { display: none; }
+    #messages { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    .msg { margin: 5px 0; }
+    .name { font-weight: bold; color: #1a73e8; }
   </style>
 </head>
 <body>
-  <div id="chat"></div>
-  <input id="msgInput" placeholder="Xabar yozing..." />
-  <button onclick="sendMessage()">Yuborish</button>
+
+  <div id="login">
+    <h2>Ismingiz va parolingizni kiriting</h2>
+    <input type="text" id="name" placeholder="Ism">
+    <input type="password" id="password" placeholder="Parol">
+    <button onclick="login()">Kirish</button>
+  </div>
+
+  <div id="chat">
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input id="msgInput" autocomplete="off" placeholder="Xabar yozing..." />
+    <button onclick="sendMessage()">Yuborish</button>
+  </div>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    // Render’da backend URL ni qo‘ying:
-    const socket = io("https://chat-server-yshj.onrender.com");
+    const socket = io("https://chat-server-yshj.onrender.com"); // Render URL-ni qo'ying
 
-    const chat = document.getElementById("chat");
-    const input = document.getElementById("msgInput");
+    const loginDiv = document.getElementById("login");
+    const chatDiv = document.getElementById("chat");
+    const nameInput = document.getElementById("name");
+    const passInput = document.getElementById("password");
+    const msgInput = document.getElementById("msgInput");
+    const messagesDiv = document.getElementById("messages");
 
-    socket.on("chat message", function(msg) {
-      const div = document.createElement("div");
-      div.textContent = msg;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    });
+    let user = JSON.parse(localStorage.getItem("chatUser"));
+
+    if (!user) {
+      loginDiv.style.display = "block";
+    } else {
+      startChat();
+    }
+
+    function login() {
+      const name = nameInput.value.trim();
+      const pass = passInput.value.trim();
+      if (name && pass) {
+        user = { name, pass };
+        localStorage.setItem("chatUser", JSON.stringify(user));
+        startChat();
+      }
+    }
+
+    function startChat() {
+      loginDiv.style.display = "none";
+      chatDiv.style.display = "block";
+
+      socket.on("chat history", (history) => {
+        messagesDiv.innerHTML = "";
+        history.forEach(showMessage);
+      });
+
+      socket.on("chat message", (msgData) => {
+        showMessage(msgData);
+      });
+    }
 
     function sendMessage() {
-      const msg = input.value;
-      if (msg.trim()) {
-        socket.emit("chat message", msg);
-        input.value = "";
+      const msg = msgInput.value.trim();
+      if (msg) {
+        socket.emit("chat message", {
+          name: user.name,
+          message: msg
+        });
+        msgInput.value = "";
       }
+    }
+
+    function showMessage(data) {
+      const div = document.createElement("div");
+      div.classList.add("msg");
+      div.innerHTML = `<span class="name">${data.name}</span>: ${data.message} <small>(${data.time})</small>`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
   </script>
 </body>
