@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>O'yin Chati</title>
+  <style>
+    #chat { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="chat"></div>
+  <input id="msgInput" placeholder="Xabar yozing..." />
+  <button onclick="sendMessage()">Yuborish</button>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // Render’da backend URL ni qo‘ying:
+    const socket = io("https://SIZNING-BACKEND-URL.onrender.com");
+
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("msgInput");
+
+    socket.on("chat message", function(msg) {
+      const div = document.createElement("div");
+      div.textContent = msg;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    });
+
+    function sendMessage() {
+      const msg = input.value;
+      if (msg.trim()) {
+        socket.emit("chat message", msg);
+        input.value = "";
+      }
+    }
+  </script>
+</body>
+</html>
