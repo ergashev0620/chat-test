@@ -1,93 +1,61 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat</title>
+  <meta charset="UTF-8" />
+  <title>Chat O'yin</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #login, #chat { display: none; }
-    #messages { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-    .msg { margin: 5px 0; }
-    .name { font-weight: bold; color: #1a73e8; }
+    body { font-family: Arial; padding: 10px; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+    #form { display: flex; gap: 10px; }
   </style>
 </head>
 <body>
+  <h2>Chat O'yin</h2>
+  <div id="messages"></div>
 
-  <div id="login">
-    <h2>Ismingiz va parolingizni kiriting</h2>
-    <input type="text" id="name" placeholder="Ism">
-    <input type="password" id="password" placeholder="Parol">
-    <button onclick="login()">Kirish</button>
-  </div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="Xabar yozing..." />
+    <button>Yuborish</button>
+  </form>
 
-  <div id="chat">
-    <h2>Chat</h2>
-    <div id="messages"></div>
-    <input id="msgInput" autocomplete="off" placeholder="Xabar yozing..." />
-    <button onclick="sendMessage()">Yuborish</button>
-  </div>
-
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
-    const socket = io("https://chat-server-yshj.onrender.com"); // Render URL-ni qo'ying
+    const SERVER_URL = "https://chat-server-yshj.onrender.com"; // <<< BACKEND URL SHU YERDA
+    const socket = io(SERVER_URL);
 
-    const loginDiv = document.getElementById("login");
-    const chatDiv = document.getElementById("chat");
-    const nameInput = document.getElementById("name");
-    const passInput = document.getElementById("password");
-    const msgInput = document.getElementById("msgInput");
+    let name = localStorage.getItem("chatName");
+    if (!name) {
+      name = prompt("Ismingizni kiriting:");
+      const password = prompt("Parol kiriting:");
+      localStorage.setItem("chatName", name);
+      localStorage.setItem("chatPassword", password);
+    }
+
     const messagesDiv = document.getElementById("messages");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
 
-    let user = JSON.parse(localStorage.getItem("chatUser"));
-
-    if (!user) {
-      loginDiv.style.display = "block";
-    } else {
-      startChat();
-    }
-
-    function login() {
-      const name = nameInput.value.trim();
-      const pass = passInput.value.trim();
-      if (name && pass) {
-        user = { name, pass };
-        localStorage.setItem("chatUser", JSON.stringify(user));
-        startChat();
-      }
-    }
-
-    function startChat() {
-      loginDiv.style.display = "none";
-      chatDiv.style.display = "block";
-
-      socket.on("chat history", (history) => {
-        messagesDiv.innerHTML = "";
-        history.forEach(showMessage);
-      });
-
-      socket.on("chat message", (msgData) => {
-        showMessage(msgData);
-      });
-    }
-
-    function sendMessage() {
-      const msg = msgInput.value.trim();
-      if (msg) {
-        socket.emit("chat message", {
-          name: user.name,
-          message: msg
-        });
-        msgInput.value = "";
-      }
-    }
-
-    function showMessage(data) {
-      const div = document.createElement("div");
-      div.classList.add("msg");
-      div.innerHTML = `<span class="name">${data.name}</span>: ${data.message} <small>(${data.time})</small>`;
-      messagesDiv.appendChild(div);
+    function addMessage(msg) {
+      const item = document.createElement("div");
+      item.textContent = `[${msg.time}] ${msg.name}: ${msg.message}`;
+      messagesDiv.appendChild(item);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
+
+    socket.on("chat history", (msgs) => {
+      messagesDiv.innerHTML = "";
+      msgs.forEach(addMessage);
+    });
+
+    socket.on("chat message", addMessage);
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit("chat message", { name, message: input.value });
+        input.value = "";
+      }
+    });
   </script>
 </body>
 </html>
